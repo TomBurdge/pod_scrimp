@@ -1,0 +1,44 @@
+name: "Scan image"
+author: "Tom Burdge"
+description: "Check a docker remote docker image for restrictive or incompatible licensing"
+branding:
+  icon: "play"
+  color: "blue"
+inputs:
+  image-name:
+    description: "A docker image in a remote repository."
+  dockpack-version:
+    description: "A valid semver specifier of dockpack version to install"
+  docpack-github-token:
+    description: "Github token to use to authenticate downloads of dockpack"
+    required: false
+    default: ${{ github.token }}
+  feluda-version:
+    description: "A valid semver specifier of feluda version to install"
+  feluda-github-token:
+    description: "Github token to use to authenticate downloads of feluda"
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - uses: extractions/setup-crate@v1
+      with:
+        repo: MaxwellFlitton/dockpack
+        version: ${{ inputs.dockpack-version }}
+        github-token: ${{ inputs.dockpack-github-token }}
+    - uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    - name: pull image
+      run: dockpack pull "${{inputs.image-name}}"
+      shell: bash
+    - uses: extractions/setup-crate@v1
+      with:
+        repo: anistark/feluda
+        version: ${{ inputs.feluda-version }}
+        github-token: ${{ inputs.feluda-github-token }}
+    - name: Check licenses
+      run: feluda --ci-format github --fail-on-restrictive --fail-on-incompatible
+      shell: bash
